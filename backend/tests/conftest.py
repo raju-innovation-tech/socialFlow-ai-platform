@@ -75,3 +75,33 @@ def client():
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def auth_headers(client):
+    """Convenience fixture that provisions a verified user and returns valid auth headers."""
+    client.post(
+        "/api/v1/auth/register",
+        json={
+            "full_name": "Test Engineer",
+            "email": "engineer@socialflow.ai",
+            "password": "Password123!",
+            "confirm_password": "Password123!",
+            "terms_accepted": True,
+        },
+    )
+    res = client.post("/api/v1/auth/resend-verification?email=engineer@socialflow.ai")
+    otp = res.json()["dev_verification_otp"]
+    client.post("/api/v1/auth/verify-email", json={"email": "engineer@socialflow.ai", "otp": otp})
+    login_res = client.post(
+        "/api/v1/auth/login",
+        json={"email": "engineer@socialflow.ai", "password": "Password123!"},
+    )
+    token = login_res.json()["access_token"]
+    ws_id = login_res.json()["user"]["default_workspace_id"]
+    return {
+        "headers": {"Authorization": f"Bearer {token}", "X-Workspace-ID": ws_id},
+        "workspace_id": ws_id,
+        "token": token,
+    }
+

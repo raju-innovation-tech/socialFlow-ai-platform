@@ -1,21 +1,24 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../../app/providers/auth_state_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/dialogs.dart';
 
-class OtpVerificationScreen extends StatefulWidget {
-  const OtpVerificationScreen({super.key});
+class OtpVerificationScreen extends ConsumerStatefulWidget {
+  final String? email;
+  const OtpVerificationScreen({super.key, this.email});
 
   @override
-  State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
+  ConsumerState<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
 }
 
-class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
+class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
   final List<TextEditingController> _controllers =
       List.generate(6, (index) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
@@ -27,13 +30,17 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   void initState() {
     super.initState();
     _startTimer();
-    // Default demo OTP pre-filled for convenience
-    _controllers[0].text = '7';
-    _controllers[1].text = '4';
-    _controllers[2].text = '9';
-    _controllers[3].text = '2';
-    _controllers[4].text = '1';
-    _controllers[5].text = '8';
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final otpParam = GoRouterState.of(context).uri.queryParameters['otp'];
+    if (otpParam != null && otpParam.length == 6) {
+      for (int i = 0; i < 6; i++) {
+        _controllers[i].text = otpParam[i];
+      }
+    }
   }
 
   void _startTimer() {
@@ -55,11 +62,39 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       return;
     }
     setState(() => _isVerifying = true);
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-    setState(() => _isVerifying = false);
-    AppToast.show(context, 'Email verified successfully!', isSuccess: true);
-    context.go('/dashboard');
+    try {
+      final email = widget.email ??
+          GoRouterState.of(context).uri.queryParameters['email'] ??
+          'elena.rostova@socialflow.ai';
+      await ref.read(authProvider.notifier).verifyEmail(email: email, otp: code);
+      if (!mounted) return;
+      setState(() => _isVerifying = false);
+      AppToast.show(context, 'Email verified successfully! Please log in.', isSuccess: true);
+      context.go('/login');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isVerifying = false);
+      AppToast.show(context, e.toString().replaceAll('Exception: ', ''), isError: true);
+    }
+  }
+
+  void _resendCode() async {
+    final email = widget.email ??
+        GoRouterState.of(context).uri.queryParameters['email'] ??
+        'elena.rostova@socialflow.ai';
+    try {
+      final devOtp = await ref.read(authProvider.notifier).resendOtp(email);
+      _startTimer();
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        devOtp != null ? 'New code sent! (Dev OTP: $devOtp)' : 'New code sent to your email!',
+        isSuccess: true,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.show(context, e.toString().replaceAll('Exception: ', ''), isError: true);
+    }
   }
 
   @override
@@ -175,7 +210,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                       ),
                       if (_secondsRemaining == 0)
                         InkWell(
-                          onTap: _startTimer,
+                          onTap: _resendCode,
                           child: Text(
                             'Resend OTP',
                             style: AppTypography.supporting.copyWith(

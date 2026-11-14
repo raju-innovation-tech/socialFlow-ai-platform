@@ -4,6 +4,15 @@ from app.models.base import TimestampMixin, UUIDMixin
 from app.models.user import User, UserProfile
 from app.models.workspace import Workspace
 from app.models.membership import WorkspaceMember, WorkspaceInvitation
+from app.models.auth_tokens import (
+    RefreshToken,
+    UserSession,
+    EmailVerificationToken,
+    PasswordResetToken,
+    LoginAttempt,
+    PlatformRole,
+    PlatformRolePermission,
+)
 from app.models.social_account import (
     SocialPlatform,
     PlatformCapability,
@@ -11,6 +20,9 @@ from app.models.social_account import (
     SocialAccountCredential,
     SocialAccountPermission,
     OAuthState,
+    WebhookSubscription,
+    IntegrationEvent,
+    IntegrationSyncLog,
 )
 from app.models.post import ContentCategory, Post, PostVariant, PostTarget, PostMedia
 from app.models.media import MediaAsset, MediaFolder, MediaFolderItem
@@ -35,6 +47,13 @@ __all__ = [
     "UUIDMixin",
     "User",
     "UserProfile",
+    "RefreshToken",
+    "UserSession",
+    "EmailVerificationToken",
+    "PasswordResetToken",
+    "LoginAttempt",
+    "PlatformRole",
+    "PlatformRolePermission",
     "Workspace",
     "WorkspaceMember",
     "WorkspaceInvitation",
@@ -44,6 +63,9 @@ __all__ = [
     "SocialAccountCredential",
     "SocialAccountPermission",
     "OAuthState",
+    "WebhookSubscription",
+    "IntegrationEvent",
+    "IntegrationSyncLog",
     "ContentCategory",
     "Post",
     "PostVariant",
@@ -75,4 +97,3 @@ __all__ = [
     "UsageRecord",
     "AuditLog",
 ]
-

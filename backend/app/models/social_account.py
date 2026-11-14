@@ -84,5 +84,41 @@ class OAuthState(Base, UUIDMixin, TimestampMixin):
     workspace_id = Column(String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
     platform = Column(String(32), nullable=False)
     redirect_uri = Column(String(512), nullable=False)
+    code_verifier = Column(String(128), nullable=True)  # PKCE verifier for X & LinkedIn
     expires_at = Column(DateTime(timezone=True), nullable=False)
+
+
+class WebhookSubscription(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "webhook_subscriptions"
+
+    workspace_id = Column(String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True)
+    platform = Column(String(32), nullable=False, index=True)  # whatsapp, facebook, instagram, telegram
+    subscription_id = Column(String(255), nullable=True)
+    endpoint_url = Column(String(512), nullable=False)
+    secret = Column(String(255), nullable=True)
+    status = Column(String(32), default="active", nullable=False)  # active, paused, failed
+    event_types = Column(Text, nullable=True)
+    last_event_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class IntegrationEvent(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "integration_events"
+
+    workspace_id = Column(String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=True, index=True)
+    platform = Column(String(32), nullable=False, index=True)
+    event_type = Column(String(128), nullable=False, index=True)
+    payload_json = Column(Text, nullable=False)
+    processed_at = Column(DateTime(timezone=True), nullable=True)
+    status = Column(String(32), default="received", nullable=False)  # received, processed, failed, ignored
+    error_details = Column(Text, nullable=True)
+
+
+class IntegrationSyncLog(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "integration_sync_logs"
+
+    account_id = Column(String(36), ForeignKey("social_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    sync_type = Column(String(64), nullable=False)  # profile, followers, permissions, test_connection
+    status = Column(String(32), nullable=False)  # success, failed, rate_limited
+    details = Column(Text, nullable=True)
+
 

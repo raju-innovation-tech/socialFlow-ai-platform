@@ -8,10 +8,13 @@ class User(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "users"
 
     email = Column(String(255), unique=True, index=True, nullable=False)
+    normalized_email = Column(String(255), unique=True, index=True, nullable=False)
     full_name = Column(String(255), nullable=False)
-    hashed_password = Column(String(255), nullable=True)  # Prepared for Phase 3 Auth
+    hashed_password = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
+    email_verified = Column(Boolean, default=False, nullable=False)
+    account_status = Column(String(32), default="pending_verification", nullable=False)  # pending_verification, active, suspended
     is_super_admin = Column(Boolean, default=False, nullable=False)
 
     # Relationships
@@ -19,6 +22,12 @@ class User(Base, UUIDMixin, TimestampMixin):
     memberships = relationship("WorkspaceMember", back_populates="user", cascade="all, delete-orphan")
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="actor")
+
+    # Auth & Security Relationships
+    refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
+    sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
+    email_verifications = relationship("EmailVerificationToken", back_populates="user", cascade="all, delete-orphan")
+    password_resets = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
 
 
 class UserProfile(Base, UUIDMixin, TimestampMixin):
@@ -33,4 +42,3 @@ class UserProfile(Base, UUIDMixin, TimestampMixin):
 
     # Relationships
     user = relationship("User", back_populates="profile")
-

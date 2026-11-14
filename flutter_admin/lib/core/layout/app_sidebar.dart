@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../app/providers/auth_state_provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_typography.dart';
 import '../theme/app_icons.dart';
 
-class AppSidebar extends StatelessWidget {
+class AppSidebar extends ConsumerWidget {
   final String currentRoute;
 
   const AppSidebar({
@@ -15,7 +17,8 @@ class AppSidebar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
     return Container(
       width: 260,
       decoration: const BoxDecoration(
@@ -237,12 +240,13 @@ class AppSidebar extends StatelessWidget {
                   icon: LucideIcons.creditCard,
                   route: '/billing/subscription',
                 ),
-                _buildNavItem(
-                  context,
-                  title: 'Super Admin',
-                  icon: LucideIcons.shieldCheck,
-                  route: '/super-admin/dashboard',
-                ),
+                if (authState.isSuperAdmin)
+                  _buildNavItem(
+                    context,
+                    title: 'Super Admin',
+                    icon: LucideIcons.shieldCheck,
+                    route: '/super-admin/dashboard',
+                  ),
 
                 const SizedBox(height: 16),
 

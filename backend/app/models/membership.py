@@ -1,7 +1,7 @@
 from sqlalchemy import Column, DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.core.database import Base
-from app.models.base import TimestampMixin, UUIDMixin
+from app.models.base import TimestampMixin, UUIDMixin, utc_now
 
 
 class WorkspaceMember(Base, UUIDMixin, TimestampMixin):
@@ -14,6 +14,7 @@ class WorkspaceMember(Base, UUIDMixin, TimestampMixin):
     user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     role = Column(String(32), default="editor", nullable=False)  # owner, admin, editor, approver, analyst, viewer
     status = Column(String(32), default="active", nullable=False)  # active, suspended, invited
+    joined_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
 
     # Relationships
     workspace = relationship("Workspace", back_populates="members")
@@ -26,10 +27,13 @@ class WorkspaceInvitation(Base, UUIDMixin, TimestampMixin):
     workspace_id = Column(String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True)
     email = Column(String(255), nullable=False, index=True)
     role = Column(String(32), default="editor", nullable=False)
+    invited_by_user_id = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     token = Column(String(128), unique=True, index=True, nullable=False)
+    token_hash = Column(String(128), unique=True, index=True, nullable=False)
     status = Column(String(32), default="pending", nullable=False)  # pending, accepted, expired, revoked
     expires_at = Column(DateTime(timezone=True), nullable=False)
+    accepted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     workspace = relationship("Workspace", back_populates="invitations")
-
+    invited_by = relationship("User", foreign_keys=[invited_by_user_id])

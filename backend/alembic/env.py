@@ -18,6 +18,9 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 def get_url():
+    cmd_url = config.get_main_option("sqlalchemy.url")
+    if cmd_url and cmd_url != "driver://user:pass@localhost/dbname":
+        return cmd_url
     return settings.DATABASE_URL
 
 def run_migrations_offline() -> None:
@@ -45,6 +48,7 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
+            render_as_batch=True,
         )
         with context.begin_transaction():
             context.run_migrations()

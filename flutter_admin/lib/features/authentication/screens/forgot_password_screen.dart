@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../../core/services/auth_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_typography.dart';
@@ -17,19 +18,33 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _emailController = TextEditingController(text: 'admin@cybermagic.studio');
+  final AuthService _authService = AuthService();
   bool _isLoading = false;
 
   void _handleSubmit() async {
-    if (_emailController.text.isEmpty || !_emailController.text.contains('@')) {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
       AppToast.show(context, 'Please enter a valid email', isError: true);
       return;
     }
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-    AppToast.show(context, 'Password reset instructions sent!', isSuccess: true);
-    context.go('/reset-password');
+    try {
+      final devOtp = await _authService.forgotPassword(email);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      AppToast.show(
+        context,
+        devOtp != null
+            ? 'Password reset code sent! (Dev OTP: $devOtp)'
+            : 'Password reset instructions sent to your email!',
+        isSuccess: true,
+      );
+      context.go('/reset-password?email=${Uri.encodeComponent(email)}&otp=${devOtp ?? ''}');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      AppToast.show(context, e.toString().replaceAll('Exception: ', ''), isError: true);
+    }
   }
 
   @override

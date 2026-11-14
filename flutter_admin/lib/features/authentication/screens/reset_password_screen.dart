@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../../core/services/auth_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_typography.dart';
@@ -16,12 +17,28 @@ class ResetPasswordScreen extends StatefulWidget {
 }
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
+  final _emailController = TextEditingController();
+  final _otpController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
+  final AuthService _authService = AuthService();
   double _strength = 0.0;
   String _strengthLabel = 'Too short';
   Color _strengthColor = AppColors.danger;
   bool _isLoading = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final qEmail = GoRouterState.of(context).uri.queryParameters['email'];
+    final qOtp = GoRouterState.of(context).uri.queryParameters['otp'];
+    if (qEmail != null && _emailController.text.isEmpty) {
+      _emailController.text = qEmail;
+    }
+    if (qOtp != null && _otpController.text.isEmpty) {
+      _otpController.text = qOtp;
+    }
+  }
 
   void _calculateStrength(String value) {
     if (value.isEmpty) {
@@ -57,6 +74,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   }
 
   void _handleReset() async {
+    final email = _emailController.text.trim();
+    final otp = _otpController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      AppToast.show(context, 'Please enter a valid email', isError: true);
+      return;
+    }
+    if (otp.length < 6) {
+      AppToast.show(context, 'Please enter 6-digit reset code', isError: true);
+      return;
+    }
     if (_passwordController.text.length < 8) {
       AppToast.show(context, 'Password must be at least 8 characters', isError: true);
       return;
@@ -66,15 +93,28 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       return;
     }
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-    AppToast.show(context, 'Password updated! Please log in.', isSuccess: true);
-    context.go('/login');
+    try {
+      await _authService.resetPassword(
+        email: email,
+        otp: otp,
+        newPassword: _passwordController.text,
+        confirmPassword: _confirmController.text,
+      );
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      AppToast.show(context, 'Password updated! Please log in.', isSuccess: true);
+      context.go('/login');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      AppToast.show(context, e.toString().replaceAll('Exception: ', ''), isError: true);
+    }
   }
 
   @override
   void dispose() {
+    _emailController.dispose();
+    _otpController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
     super.dispose();
@@ -124,6 +164,24 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     style: AppTypography.supporting,
                   ),
                   const SizedBox(height: 24),
+
+                  CustomTextField(
+                    label: 'Account Email',
+                    hintText: 'name@example.com',
+                    controller: _emailController,
+                    prefixIcon: const Icon(LucideIcons.mail, size: 16, color: AppColors.textSecondary),
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  const SizedBox(height: 16),
+
+                  CustomTextField(
+                    label: '6-Digit Reset Code',
+                    hintText: 'Enter code sent to your email',
+                    controller: _otpController,
+                    prefixIcon: const Icon(LucideIcons.keyRound, size: 16, color: AppColors.textSecondary),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 16),
 
                   PasswordField(
                     label: 'New Password',

@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, String, Text
+from sqlalchemy import Boolean, Column, ForeignKey, String, Text
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 from app.models.base import TimestampMixin, UUIDMixin
@@ -11,9 +11,13 @@ class Workspace(Base, UUIDMixin, TimestampMixin):
     slug = Column(String(255), unique=True, index=True, nullable=False)
     description = Column(Text, nullable=True)
     logo_url = Column(String(512), nullable=True)
+    owner_id = Column(String(36), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True, index=True)
+    status = Column(String(32), default="active", nullable=False)  # active, suspended, archived
+    timezone = Column(String(64), default="UTC", nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
 
     # Relationships
+    owner = relationship("User", foreign_keys=[owner_id])
     members = relationship("WorkspaceMember", back_populates="workspace", cascade="all, delete-orphan")
     invitations = relationship("WorkspaceInvitation", back_populates="workspace", cascade="all, delete-orphan")
     social_accounts = relationship("SocialAccount", back_populates="workspace", cascade="all, delete-orphan")
@@ -24,4 +28,3 @@ class Workspace(Base, UUIDMixin, TimestampMixin):
     subscription = relationship("WorkspaceSubscription", back_populates="workspace", uselist=False, cascade="all, delete-orphan")
     notifications = relationship("Notification", back_populates="workspace", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="workspace", cascade="all, delete-orphan")
-

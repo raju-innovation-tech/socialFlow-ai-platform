@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../../app/providers/auth_state_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_typography.dart';
@@ -8,14 +10,14 @@ import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/form_fields.dart';
 import '../../../core/widgets/dialogs.dart';
 
-class RegisterScreen extends StatefulWidget {
+class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -31,11 +33,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
     if (_formKey.currentState?.validate() ?? false) {
       setState(() => _isLoading = true);
-      await Future.delayed(const Duration(milliseconds: 600));
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      AppToast.show(context, 'Verification code sent to your email!', isSuccess: true);
-      context.go('/verify-otp');
+      try {
+        final res = await ref.read(authProvider.notifier).register(
+          fullName: _nameController.text.trim(),
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          confirmPassword: _confirmPasswordController.text,
+        );
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        final devOtp = res['dev_verification_otp'] as String?;
+        AppToast.show(
+          context,
+          devOtp != null
+              ? 'Verification code sent! (Dev OTP: $devOtp)'
+              : 'Verification code sent to your email!',
+          isSuccess: true,
+        );
+        context.go('/verify-otp?email=${Uri.encodeComponent(_emailController.text.trim())}&otp=${devOtp ?? ''}');
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        AppToast.show(context, e.toString().replaceAll('Exception: ', ''), isError: true);
+      }
     }
   }
 

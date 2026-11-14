@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../../app/providers/auth_state_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_typography.dart';
@@ -8,14 +10,14 @@ import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/form_fields.dart';
 import '../../../core/widgets/dialogs.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController(text: 'admin@cybermagic.studio');
   final _passwordController = TextEditingController(text: 'Password123!');
@@ -25,11 +27,24 @@ class _LoginScreenState extends State<LoginScreen> {
   void _handleLogin() async {
     if (_formKey.currentState?.validate() ?? false) {
       setState(() => _isLoading = true);
-      await Future.delayed(const Duration(milliseconds: 600));
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      AppToast.show(context, 'Welcome back, Cyber Magic Team!', isSuccess: true);
-      context.go('/dashboard');
+      try {
+        final email = _emailController.text.trim();
+        final password = _passwordController.text;
+        await ref.read(authProvider.notifier).login(email, password);
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        final state = ref.read(authProvider);
+        AppToast.show(context, 'Welcome back, ${state.userName}!', isSuccess: true);
+        context.go('/dashboard');
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        final err = e.toString().replaceAll('Exception: ', '');
+        AppToast.show(context, err, isSuccess: false);
+        if (err.toLowerCase().contains('not verified') || err.toLowerCase().contains('verification')) {
+          context.go('/otp-verification');
+        }
+      }
     }
   }
 
