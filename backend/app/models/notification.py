@@ -12,7 +12,7 @@ class Notification(Base, UUIDMixin, TimestampMixin):
 
     title = Column(String(255), nullable=False)
     message = Column(Text, nullable=False)
-    notification_type = Column(String(32), default="system", nullable=False)  # publishing, approval, alert, system
+    notification_type = Column(String(32), default="system", nullable=False)  # publishing, approval, alert, system, account
     is_read = Column(Boolean, default=False, nullable=False, index=True)
     metadata_json = Column(Text, nullable=True)
 
@@ -26,8 +26,8 @@ class NotificationPreference(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "notification_preferences"
 
     user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    channel = Column(String(32), default="in_app", nullable=False)  # in_app, email, webhook
-    category = Column(String(32), default="all", nullable=False)  # publishing, team, billing, system
+    channel = Column(String(32), default="in_app", nullable=False)  # in_app, email, push
+    category = Column(String(32), default="all", nullable=False)  # publishing, account, team, analytics, system
     is_enabled = Column(Boolean, default=True, nullable=False)
 
 
@@ -43,3 +43,11 @@ class NotificationDeliveryLog(Base, UUIDMixin, TimestampMixin):
     # Relationships
     notification = relationship("Notification", back_populates="delivery_logs")
 
+
+class NotificationDevice(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "notification_devices"
+
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    device_token = Column(String(255), nullable=False, index=True)
+    device_type = Column(String(32), default="android", nullable=False)  # android, ios, web
+    is_active = Column(Boolean, default=True, nullable=False)

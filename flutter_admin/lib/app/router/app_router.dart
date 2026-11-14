@@ -53,6 +53,7 @@ import '../../features/telegram/screens/telegram_bot_connection_screen.dart';
 import '../../features/analytics/screens/analytics_overview_screen.dart';
 import '../../features/analytics/screens/platform_analytics_screen.dart';
 import '../../features/analytics/screens/reports_export_screen.dart';
+import '../../features/notifications/screens/notifications_center_screen.dart';
 
 // Module 10: Approvals & Team
 import '../../features/approvals/screens/approval_inbox_screen.dart';
@@ -243,6 +244,10 @@ final GoRouter appRouter = GoRouter(
         GoRoute(
           path: '/analytics/reports',
           builder: (context, state) => const ReportsExportScreen(),
+        ),
+        GoRoute(
+          path: '/notifications',
+          builder: (context, state) => const NotificationsCenterScreen(),
         ),
 
         // Module 10: Approvals & Team (Screens 34 - 37)

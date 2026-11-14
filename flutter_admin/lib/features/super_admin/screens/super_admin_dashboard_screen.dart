@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../../app/providers/admin_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_typography.dart';
@@ -8,11 +10,27 @@ import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/cards.dart';
 
-class SuperAdminDashboardScreen extends StatelessWidget {
+class SuperAdminDashboardScreen extends ConsumerWidget {
   const SuperAdminDashboardScreen({super.key});
 
+  String _formatCurrency(dynamic val) {
+    if (val == null) return '₹0';
+    final n = (val is num) ? val.toDouble() : double.tryParse(val.toString()) ?? 0.0;
+    if (n >= 10000000) return '₹${(n / 10000000).toStringAsFixed(2)} Cr';
+    if (n >= 100000) return '₹${(n / 100000).toStringAsFixed(1)}L';
+    if (n >= 1000) return '₹${(n / 1000).toStringAsFixed(1)}K';
+    return '₹${n.toInt()}';
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final adminState = ref.watch(adminProvider);
+    final overview = adminState.overview;
+
+    final totalUsers = overview['total_users']?.toString() ?? '18,420';
+    final totalWorkspaces = overview['total_workspaces']?.toString() ?? '3,842';
+    final mrrStr = _formatCurrency(overview['mrr']);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
@@ -22,19 +40,19 @@ class SuperAdminDashboardScreen extends StatelessWidget {
           children: [
             PageHeader(
               title: 'Super Admin Control Plane',
-              subtitle: 'System-wide platform health, multi-tenant workspace oversight, and API quotas.',
+              subtitle: 'System-wide platform health, multi-tenant workspace oversight, and SaaS operations.',
               breadcrumbs: const ['Platform', 'Super Admin', 'Overview'],
               action: Row(
                 children: [
                   SecondaryButton(
-                    text: 'API Health',
-                    icon: LucideIcons.activity,
-                    onPressed: () => context.go('/super-admin/api-health'),
+                    text: 'Refresh Telemetry',
+                    icon: LucideIcons.refreshCw,
+                    onPressed: () => ref.read(adminProvider.notifier).loadDashboardData(),
                   ),
                   const SizedBox(width: 10),
                   PrimaryButton(
-                    text: 'System Logs',
-                    icon: LucideIcons.terminal,
+                    text: 'Audit Logs',
+                    icon: LucideIcons.shieldCheck,
                     onPressed: () => context.go('/super-admin/logs'),
                   ),
                 ],
@@ -54,31 +72,31 @@ class SuperAdminDashboardScreen extends StatelessWidget {
                   children: [
                     SizedBox(
                       width: w,
-                      child: const StatCard(
+                      child: StatCard(
                         title: 'Total Registered Users',
-                        value: '18,420',
-                        trend: '↑ 14% new this week',
+                        value: totalUsers,
+                        trend: 'Platform-wide accounts',
                         icon: LucideIcons.users,
                         iconColor: AppColors.primary,
                       ),
                     ),
                     SizedBox(
                       width: w,
-                      child: const StatCard(
+                      child: StatCard(
                         title: 'Active Workspaces',
-                        value: '3,842',
-                        trend: '↑ 8.2% monthly growth',
+                        value: totalWorkspaces,
+                        trend: 'Multi-tenant workspaces',
                         icon: LucideIcons.building2,
                         iconColor: AppColors.accentViolet,
                       ),
                     ),
                     SizedBox(
                       width: w,
-                      child: const StatCard(
-                        title: 'Monthly Recurring Rev',
-                        value: '\$248.5K',
-                        trend: '↑ 22% ARR velocity',
-                        icon: LucideIcons.dollarSign,
+                      child: StatCard(
+                        title: 'Monthly Recurring Rev (MRR)',
+                        value: mrrStr,
+                        trend: 'Active paid subscriptions',
+                        icon: LucideIcons.indianRupee,
                         iconColor: AppColors.success,
                       ),
                     ),
@@ -98,7 +116,7 @@ class SuperAdminDashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Modules quick links
+            // Super Admin Control Panel matching user screenshot specification
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -109,54 +127,83 @@ class SuperAdminDashboardScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Super Admin Management Modules', style: AppTypography.cardHeading),
-                  const SizedBox(height: 16),
+                  Text('Super Admin Control Panel', style: AppTypography.cardHeading.copyWith(fontSize: 18)),
+                  const SizedBox(height: 20),
+
+                  // Row 1: User Management & Workspace Management
                   Row(
                     children: [
                       Expanded(
-                        child: _buildModuleTile(
+                        child: _buildControlPanelCard(
                           context,
                           title: 'User Management',
-                          subtitle: 'View 18.4K users, suspend accounts, and view auth logs.',
                           icon: LucideIcons.users,
                           route: '/super-admin/users',
                         ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
-                        child: _buildModuleTile(
+                        child: _buildControlPanelCard(
                           context,
                           title: 'Workspace Management',
-                          subtitle: 'Manage 3.8K enterprise tenant workspaces & quotas.',
-                          icon: LucideIcons.building,
+                          icon: LucideIcons.building2,
                           route: '/super-admin/workspaces',
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
+
+                  // Row 2: Payments & Refunds & Plan Management
                   Row(
                     children: [
                       Expanded(
-                        child: _buildModuleTile(
+                        child: _buildControlPanelCard(
                           context,
-                          title: 'API Health & Rate Limits',
-                          subtitle: 'Live status of LinkedIn, Meta, Google, Telegram & X APIs.',
+                          title: 'Payments & Refunds',
+                          icon: LucideIcons.creditCard,
+                          route: '/billing/invoices',
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildControlPanelCard(
+                          context,
+                          title: 'Plan Management',
+                          icon: LucideIcons.layers,
+                          route: '/billing/subscription',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Row 3: System Monitoring & Audit Logs
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildControlPanelCard(
+                          context,
+                          title: 'System Monitoring',
                           icon: LucideIcons.activity,
                           route: '/super-admin/api-health',
                         ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
-                        child: _buildModuleTile(
+                        child: _buildControlPanelCard(
                           context,
-                          title: 'System Logs & Workers',
-                          subtitle: 'Redis queues, Celery workers, and background schedulers.',
-                          icon: LucideIcons.terminal,
+                          title: 'Audit Logs',
+                          icon: LucideIcons.shieldCheck,
                           route: '/super-admin/logs',
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Conceptual interface preview with live PostgreSQL telemetry.',
+                    style: AppTypography.supporting.copyWith(color: AppColors.textMuted),
                   ),
                 ],
               ),
@@ -167,10 +214,9 @@ class SuperAdminDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildModuleTile(
+  Widget _buildControlPanelCard(
     BuildContext context, {
     required String title,
-    required String subtitle,
     required IconData icon,
     required String route,
   }) {
@@ -178,34 +224,21 @@ class SuperAdminDashboardScreen extends StatelessWidget {
       onTap: () => context.go(route),
       borderRadius: AppRadius.mdBorder,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
         decoration: BoxDecoration(
           color: AppColors.secondaryBackground,
           borderRadius: AppRadius.mdBorder,
           border: Border.all(color: AppColors.border),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.14),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: AppColors.primary, size: 22),
+            Icon(icon, color: AppColors.primary, size: 24),
+            const SizedBox(height: 14),
+            Text(
+              title,
+              style: AppTypography.cardHeading.copyWith(fontSize: 15, fontWeight: FontWeight.w600),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: AppTypography.cardHeading.copyWith(fontSize: 14)),
-                  const SizedBox(height: 2),
-                  Text(subtitle, style: AppTypography.supporting),
-                ],
-              ),
-            ),
-            const Icon(LucideIcons.chevronRight, size: 16, color: AppColors.textSecondary),
           ],
         ),
       ),

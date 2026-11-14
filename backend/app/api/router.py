@@ -11,6 +11,7 @@ from app.api.v1 import (
     media,
     notifications,
     posts,
+    publishing,
     social_accounts,
     teams,
     users,
@@ -29,6 +30,7 @@ api_v1_router.include_router(admin.router)
 api_v1_router.include_router(users.router)
 api_v1_router.include_router(social_accounts.router)
 api_v1_router.include_router(posts.router)
+api_v1_router.include_router(publishing.router)
 api_v1_router.include_router(media.router)
 api_v1_router.include_router(campaigns.router)
 api_v1_router.include_router(analytics.router)

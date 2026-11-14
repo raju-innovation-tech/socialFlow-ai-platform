@@ -36,6 +36,7 @@ from app.models.billing import (
     WorkspaceSubscription,
     BillingCustomer,
     Invoice,
+    PaymentRefund,
     PaymentEvent,
     UsageRecord,
 )
@@ -93,6 +94,7 @@ __all__ = [
     "WorkspaceSubscription",
     "BillingCustomer",
     "Invoice",
+    "PaymentRefund",
     "PaymentEvent",
     "UsageRecord",
     "AuditLog",

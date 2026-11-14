@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/providers/auth_state_provider.dart';
+import '../../app/providers/notifications_provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_typography.dart';
@@ -134,34 +135,52 @@ class AppTopBar extends ConsumerWidget implements PreferredSizeWidget {
           const SizedBox(width: 12),
 
           // Notification Bell
-          Stack(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.border, width: 1),
-                ),
-                child: IconButton(
-                  icon: const Icon(LucideIcons.bell, size: 16, color: AppColors.textPrimary),
-                  onPressed: () => context.go('/settings/notifications'),
-                ),
-              ),
-              Positioned(
-                top: 7,
-                right: 7,
-                child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
-                    color: AppColors.danger,
-                    shape: BoxShape.circle,
+          Consumer(
+            builder: (context, ref, _) {
+              final notifState = ref.watch(notificationsProvider);
+              final hasUnread = notifState.unreadCount > 0;
+
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppColors.card,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.border, width: 1),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(LucideIcons.bell, size: 16, color: AppColors.textPrimary),
+                      onPressed: () => context.go('/notifications'),
+                    ),
                   ),
-                ),
-              ),
-            ],
+                  if (hasUnread)
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: AppColors.danger,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                        child: Text(
+                          notifState.unreadCount > 9 ? '9+' : '${notifState.unreadCount}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
 
           const SizedBox(width: 14),

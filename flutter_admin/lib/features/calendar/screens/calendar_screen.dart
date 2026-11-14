@@ -11,22 +11,31 @@ import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/dialogs.dart';
 
-class CalendarScreen extends StatefulWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../app/providers/publishing_provider.dart';
+
+class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({super.key});
 
   @override
-  State<CalendarScreen> createState() => _CalendarScreenState();
+  ConsumerState<CalendarScreen> createState() => _CalendarScreenState();
 }
 
-class _CalendarScreenState extends State<CalendarScreen> {
+class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   String _selectedView = 'Week';
   String _selectedPlatform = 'All Platforms';
-  DateTime _currentDate = DateTime(2025, 5, 21);
+  DateTime _currentDate = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => ref.read(publishingProvider.notifier).loadCalendar());
+  }
 
   void _showRescheduleDialog(PostItem post) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         backgroundColor: AppColors.elevatedCard,
         title: Text('Reschedule Post', style: AppTypography.cardHeading),
         content: Column(
@@ -38,17 +47,37 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ListTile(
               leading: const Icon(LucideIcons.calendar, color: AppColors.primary),
               title: const Text('Tomorrow at 10:00 AM'),
-              onTap: () {
-                Navigator.pop(context);
-                AppToast.show(context, 'Post rescheduled to Tomorrow 10:00 AM (Demo)', isSuccess: true);
+              onTap: () async {
+                Navigator.pop(dialogCtx);
+                final tomorrow = DateTime.now().add(const Duration(days: 1));
+                final ok = await ref.read(publishingProvider.notifier).schedulePost(
+                  post.id,
+                  DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 10, 0),
+                );
+                if (!mounted) return;
+                if (ok) {
+                  AppToast.show(context, 'Post rescheduled to Tomorrow 10:00 AM', isSuccess: true);
+                } else {
+                  AppToast.show(context, 'Reschedule failed', isError: true);
+                }
               },
             ),
             ListTile(
-              leading: const Icon(LucideIcons.sparkles, color: AppColors.accentViolet),
-              title: const Text('Next AI Peak Slot (Thursday 2 PM)'),
-              onTap: () {
-                Navigator.pop(context);
-                AppToast.show(context, 'Post moved to optimal AI slot! (Demo)', isSuccess: true);
+              leading: const Icon(LucideIcons.clock, color: AppColors.accentViolet),
+              title: const Text('Next Day Slot (2:00 PM)'),
+              onTap: () async {
+                Navigator.pop(dialogCtx);
+                final nextDay = DateTime.now().add(const Duration(days: 2));
+                final ok = await ref.read(publishingProvider.notifier).schedulePost(
+                  post.id,
+                  DateTime(nextDay.year, nextDay.month, nextDay.day, 14, 0),
+                );
+                if (!mounted) return;
+                if (ok) {
+                  AppToast.show(context, 'Post rescheduled to 2:00 PM slot', isSuccess: true);
+                } else {
+                  AppToast.show(context, 'Reschedule failed', isError: true);
+                }
               },
             ),
           ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/theme/app_colors.dart';
@@ -9,21 +10,23 @@ import '../../../core/models/social_account.dart';
 import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/dialogs.dart';
+import '../../../app/providers/publishing_provider.dart';
+import '../../../app/providers/social_accounts_provider.dart';
 
-class CreatePostScreen extends StatefulWidget {
+class CreatePostScreen extends ConsumerStatefulWidget {
   const CreatePostScreen({super.key});
 
   @override
-  State<CreatePostScreen> createState() => _CreatePostScreenState();
+  ConsumerState<CreatePostScreen> createState() => _CreatePostScreenState();
 }
 
-class _CreatePostScreenState extends State<CreatePostScreen> {
+class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   final _contentController = TextEditingController(
-    text: '🚀 Excited to announce our Q3 product roadmap! Exploring how AI-driven workflows streamline omni-channel reach without compromising creative nuance. Read more in our latest blog post.',
+    text: '🚀 Excited to share our new product update! Exploring how unified social operations streamline omni-channel reach. Read our full overview and let us know your thoughts.',
   );
   final Set<PlatformType> _selectedPlatforms = {
     PlatformType.linkedin,
-    PlatformType.instagram,
+    PlatformType.twitter,
     PlatformType.facebook,
   };
   DateTime _scheduledDate = DateTime.now().add(const Duration(days: 1));
@@ -36,22 +39,123 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     super.dispose();
   }
 
+  List<String> _getSelectedAccountIds() {
+    final accounts = ref.read(socialAccountsProvider).accounts;
+    final ids = <String>[];
+    for (final acc in accounts) {
+      if (_selectedPlatforms.contains(acc.platform)) {
+        ids.add(acc.id);
+      }
+    }
+    return ids;
+  }
+
   void _handlePublishNow() async {
+    final text = _contentController.text.trim();
+    if (text.isEmpty) {
+      AppToast.show(context, 'Please enter post content', isError: true);
+      return;
+    }
+
     setState(() => _isPublishing = true);
-    await Future.delayed(const Duration(milliseconds: 700));
+    final targetIds = _getSelectedAccountIds();
+
+    final created = await ref.read(publishingProvider.notifier).createPost(
+      content: text,
+      targetAccountIds: targetIds,
+    );
+
     if (!mounted) return;
-    setState(() => _isPublishing = false);
-    AppToast.show(context, 'Post published to ${_selectedPlatforms.length} platforms! (Demo)', isSuccess: true);
-    context.go('/publishing/queue');
+
+    if (created != null && created['id'] != null) {
+      final postId = created['id'] as String;
+      final pubResult = await ref.read(publishingProvider.notifier).publishNow(postId);
+      if (!mounted) return;
+      setState(() => _isPublishing = false);
+
+      if (pubResult != null) {
+        AppToast.show(
+          context,
+          'Publishing completed (${pubResult['overall_status']})',
+          isSuccess: pubResult['overall_status'] != 'failed',
+          isError: pubResult['overall_status'] == 'failed',
+        );
+      }
+      context.go('/publishing/queue');
+    } else {
+      setState(() => _isPublishing = false);
+      AppToast.show(context, 'Failed to create post record', isError: true);
+    }
   }
 
   void _handleSchedule() async {
+    final text = _contentController.text.trim();
+    if (text.isEmpty) {
+      AppToast.show(context, 'Please enter post content', isError: true);
+      return;
+    }
+
+    final targetDateTime = DateTime(
+      _scheduledDate.year,
+      _scheduledDate.month,
+      _scheduledDate.day,
+      _scheduledTime.hour,
+      _scheduledTime.minute,
+    );
+
+    if (targetDateTime.isBefore(DateTime.now())) {
+      AppToast.show(context, 'Scheduled time must be in the future', isError: true);
+      return;
+    }
+
     setState(() => _isPublishing = true);
-    await Future.delayed(const Duration(milliseconds: 700));
+    final targetIds = _getSelectedAccountIds();
+
+    final created = await ref.read(publishingProvider.notifier).createPost(
+      content: text,
+      scheduledAt: targetDateTime,
+      targetAccountIds: targetIds,
+    );
+
     if (!mounted) return;
     setState(() => _isPublishing = false);
-    AppToast.show(context, 'Post scheduled for ${_scheduledDate.month}/${_scheduledDate.day} at ${_scheduledTime.format(context)}', isSuccess: true);
-    context.go('/publishing/queue');
+
+    if (created != null) {
+      AppToast.show(
+        context,
+        'Post scheduled for ${_scheduledDate.month}/${_scheduledDate.day} at ${_scheduledTime.format(context)}',
+        isSuccess: true,
+      );
+      context.go('/publishing/queue');
+    } else {
+      AppToast.show(context, 'Failed to schedule post', isError: true);
+    }
+  }
+
+  void _handleSaveDraft() async {
+    final text = _contentController.text.trim();
+    if (text.isEmpty) {
+      AppToast.show(context, 'Please enter post content', isError: true);
+      return;
+    }
+
+    setState(() => _isPublishing = true);
+    final targetIds = _getSelectedAccountIds();
+
+    final created = await ref.read(publishingProvider.notifier).createPost(
+      content: text,
+      targetAccountIds: targetIds,
+    );
+
+    if (!mounted) return;
+    setState(() => _isPublishing = false);
+
+    if (created != null) {
+      AppToast.show(context, 'Draft saved successfully', isSuccess: true);
+      context.go('/publishing/drafts');
+    } else {
+      AppToast.show(context, 'Failed to save draft', isError: true);
+    }
   }
 
   @override
@@ -84,10 +188,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   SecondaryButton(
                     text: 'Save Draft',
                     icon: LucideIcons.fileText,
-                    onPressed: () {
-                      AppToast.show(context, 'Draft saved successfully (Demo)', isSuccess: true);
-                      context.go('/publishing/drafts');
-                    },
+                    onPressed: _handleSaveDraft,
                   ),
                   const SizedBox(width: 10),
                   PrimaryButton(
@@ -194,22 +295,20 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                       onPressed: () => context.go('/media'),
                                     ),
                                     IconButton(
-                                      icon: const Icon(LucideIcons.sparkles, size: 18, color: AppColors.accentViolet),
-                                      tooltip: 'Generate / Rewrite with AI',
+                                      icon: const Icon(LucideIcons.hash, size: 18, color: AppColors.textSecondary),
+                                      tooltip: 'Insert Hashtags',
                                       onPressed: () {
                                         setState(() {
-                                          _contentController.text =
-                                              '✨ Discover how our automated social pipeline turns raw ideas into multi-format campaigns that convert! #MarketingAutomation #SaaS #Growth';
+                                          _contentController.text += ' #Productivity #SaaS #Growth';
                                         });
-                                        AppToast.show(context, 'AI rewritten caption applied!', isSuccess: true);
                                       },
                                     ),
                                     IconButton(
-                                      icon: const Icon(LucideIcons.hash, size: 18, color: AppColors.textSecondary),
-                                      tooltip: 'Hashtag Suggestions',
+                                      icon: const Icon(LucideIcons.link, size: 18, color: AppColors.textSecondary),
+                                      tooltip: 'Insert Link',
                                       onPressed: () {
                                         setState(() {
-                                          _contentController.text += ' #Productivity #AI #B2B';
+                                          _contentController.text += ' https://socialflow.ai';
                                         });
                                       },
                                     ),
@@ -219,7 +318,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                   valueListenable: _contentController,
                                   builder: (context, val, _) {
                                     return Text(
-                                      '${val.text.length} / 2200 chars',
+                                      '${val.text.length} chars',
                                       style: AppTypography.chip.copyWith(color: AppColors.textSecondary),
                                     );
                                   },
@@ -256,15 +355,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text('Attached Image: workspace_hero.png', style: AppTypography.cardHeading.copyWith(fontSize: 14)),
+                                        Text('campaign_hero_banner.png', style: AppTypography.cardHeading.copyWith(fontSize: 14)),
                                         const SizedBox(height: 4),
-                                        Text('Resolution: 1920x1080 • Size: 1.4 MB', style: AppTypography.supporting),
+                                        Text('1920 × 1080 • 1.4 MB • PNG', style: AppTypography.supporting),
                                         const SizedBox(height: 8),
-                                        OutlinedActionButton(
-                                          text: 'Change Media',
-                                          icon: LucideIcons.refreshCw,
-                                          onPressed: () => context.go('/media'),
-                                        ),
+                                        Text('Compliant with all 7 platforms', style: AppTypography.chip.copyWith(color: AppColors.success)),
                                       ],
                                     ),
                                   ),
@@ -276,11 +371,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       ),
                     ),
 
-                    if (isWide) const SizedBox(width: 20) else const SizedBox(height: 20),
+                    if (isWide) const SizedBox(width: 24) else const SizedBox(height: 24),
 
-                    // Right Schedule & Pacing Panel
+                    // Right Schedule & Configuration Panel
                     Expanded(
-                      flex: isWide ? 8 : 0,
+                      flex: isWide ? 7 : 0,
                       child: Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
@@ -291,10 +386,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Scheduling & Queueing', style: AppTypography.cardHeading),
+                            Text('Publishing Schedule', style: AppTypography.cardHeading),
                             const SizedBox(height: 6),
-                            Text('Select optimal time or let AI pick the peak engagement hour.', style: AppTypography.supporting),
-                            const SizedBox(height: 20),
+                            Text('Queue for automated publication or target peak engagement.', style: AppTypography.supporting),
+                            const SizedBox(height: 18),
 
                             Container(
                               padding: const EdgeInsets.all(14),
@@ -357,11 +452,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(LucideIcons.sparkles, size: 18, color: AppColors.primary),
+                                  const Icon(LucideIcons.clock, size: 18, color: AppColors.primary),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      'Recommended peak audience slot: 10:30 AM (Wednesday)',
+                                      'Timezone: Workspace UTC (Standard)',
                                       style: AppTypography.chip.copyWith(color: AppColors.primary, fontSize: 11),
                                     ),
                                   ),
