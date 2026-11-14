@@ -6,6 +6,7 @@ from app.api.v1 import (
     billing,
     campaigns,
     health,
+    integrations,
     invitations,
     media,
     notifications,
@@ -22,6 +23,7 @@ api_v1_router = APIRouter()
 api_v1_router.include_router(health.router)
 api_v1_router.include_router(auth.router)
 api_v1_router.include_router(invitations.router)
+api_v1_router.include_router(integrations.router)
 api_v1_router.include_router(workspaces.router)
 api_v1_router.include_router(admin.router)
 api_v1_router.include_router(users.router)

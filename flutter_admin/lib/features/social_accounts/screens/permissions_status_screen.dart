@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/theme/app_colors.dart';
@@ -9,12 +10,16 @@ import '../../../core/mock/mock_data.dart';
 import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/status_badge.dart';
+import '../../../app/providers/social_accounts_provider.dart';
 
-class PermissionsStatusScreen extends StatelessWidget {
+class PermissionsStatusScreen extends ConsumerWidget {
   const PermissionsStatusScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(socialAccountsProvider);
+    final accounts = state.accounts.isNotEmpty ? state.accounts : MockData.connectedAccounts;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
@@ -46,7 +51,7 @@ class PermissionsStatusScreen extends StatelessWidget {
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(minWidth: 850),
                     child: DataTable(
-                      headingRowColor: MaterialStateProperty.all(AppColors.secondaryBackground),
+                      headingRowColor: WidgetStateProperty.all(AppColors.secondaryBackground),
                       headingTextStyle: AppTypography.cardHeading.copyWith(fontSize: 13),
                       dataTextStyle: AppTypography.body.copyWith(fontSize: 13),
                       columns: const [
@@ -57,7 +62,7 @@ class PermissionsStatusScreen extends StatelessWidget {
                         DataColumn(label: Text('Auto-Publishing')),
                         DataColumn(label: Text('Audit Status')),
                       ],
-                      rows: MockData.connectedAccounts.map((acc) {
+                      rows: accounts.map((acc) {
                         return DataRow(
                           cells: [
                             DataCell(
@@ -69,7 +74,7 @@ class PermissionsStatusScreen extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            const DataCell(Text('v20 Enterprise Tier')),
+                            const DataCell(Text('Official API Tier')),
                             const DataCell(StatusBadge(label: 'Healthy / Active')),
                             DataCell(Text('${acc.permissions.length} granted scopes')),
                             const DataCell(

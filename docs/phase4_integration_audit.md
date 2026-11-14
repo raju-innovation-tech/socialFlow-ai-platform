@@ -81,3 +81,4 @@
 7. **Batch 13:** Flutter Frontend Integration:
    - Wire `socialAccountsProvider`, connect/disconnect flows, capability tags, platform logos, error dialogs.
 8. **Batch 14:** Test Suite, Documentation & Verification Report.
+

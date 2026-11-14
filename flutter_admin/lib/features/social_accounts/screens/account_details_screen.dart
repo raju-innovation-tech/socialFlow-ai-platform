@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/theme/app_colors.dart';
@@ -6,21 +7,29 @@ import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_icons.dart';
 import '../../../core/mock/mock_data.dart';
+import '../../../core/models/social_account.dart';
 import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/dialogs.dart';
+import '../../../app/providers/social_accounts_provider.dart';
 
-class AccountDetailsScreen extends StatelessWidget {
+class AccountDetailsScreen extends ConsumerWidget {
   final String accountId;
 
   const AccountDetailsScreen({super.key, required this.accountId});
 
   @override
-  Widget build(BuildContext context) {
-    final account = MockData.connectedAccounts.firstWhere(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(socialAccountsProvider);
+    final account = state.accounts.firstWhere(
       (a) => a.id == accountId,
-      orElse: () => MockData.connectedAccounts.first,
+      orElse: () => MockData.connectedAccounts.firstWhere(
+        (a) => a.id == accountId,
+        orElse: () => MockData.connectedAccounts.first,
+      ),
     );
+
+    final isConnected = account.status == AccountStatus.connected;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -38,7 +47,17 @@ class AccountDetailsScreen extends StatelessWidget {
                   SecondaryButton(
                     text: 'Refresh Token',
                     icon: LucideIcons.refreshCw,
-                    onPressed: () => AppToast.show(context, 'Token health refreshed: 100% OK', isSuccess: true),
+                    onPressed: () async {
+                      AppToast.show(context, 'Refreshing token health...');
+                      final ok = await ref.read(socialAccountsProvider.notifier).syncAccount(account.id);
+                      if (context.mounted) {
+                        if (ok) {
+                          AppToast.show(context, 'Token health refreshed: 100% OK', isSuccess: true);
+                        } else {
+                          AppToast.show(context, 'Token refresh failed', isError: true);
+                        }
+                      }
+                    },
                   ),
                   const SizedBox(width: 12),
                   PrimaryButton(
@@ -73,10 +92,15 @@ class AccountDetailsScreen extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: AppColors.success.withOpacity(0.14),
+                                color: isConnected ? AppColors.success.withOpacity(0.14) : AppColors.warning.withOpacity(0.14),
                                 borderRadius: AppRadius.pillBorder,
                               ),
-                              child: Text('Connected & Active', style: AppTypography.chip.copyWith(color: AppColors.success)),
+                              child: Text(
+                                isConnected ? 'Connected & Active' : 'Attention Required',
+                                style: AppTypography.chip.copyWith(
+                                  color: isConnected ? AppColors.success : AppColors.warning,
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -84,7 +108,7 @@ class AccountDetailsScreen extends StatelessWidget {
                         Text(account.handle, style: AppTypography.subHeading),
                         const SizedBox(height: 8),
                         Text(
-                          'Connected on: ${account.connectedAt.month}/${account.connectedAt.day}/${account.connectedAt.year} • Official Graph API',
+                          'Connected on: ${account.connectedAt.month}/${account.connectedAt.day}/${account.connectedAt.year} • Official Graph & OAuth API',
                           style: AppTypography.supporting,
                         ),
                       ],
@@ -141,13 +165,23 @@ class AccountDetailsScreen extends StatelessWidget {
                         children: [
                           Text('Token Expiration Window', style: AppTypography.cardHeading.copyWith(fontSize: 14)),
                           const SizedBox(height: 4),
-                          Text('Auto-refreshes every 30 days via background scheduler.', style: AppTypography.supporting),
+                          Text('Tokens are stored encrypted with AES-128 and refreshed automatically.', style: AppTypography.supporting),
                         ],
                       ),
                       OutlinedActionButton(
                         text: 'Force Re-Authenticate',
                         icon: LucideIcons.lock,
-                        onPressed: () => AppToast.show(context, 'Re-authentication prompt triggered (Demo)', isSuccess: true),
+                        onPressed: () async {
+                          AppToast.show(context, 'Re-authenticating account...');
+                          final ok = await ref.read(socialAccountsProvider.notifier).reconnectAccount(account.id);
+                          if (context.mounted) {
+                            if (ok) {
+                              AppToast.show(context, 'Re-authentication verified successfully', isSuccess: true);
+                            } else {
+                              AppToast.show(context, 'Re-authentication failed', isError: true);
+                            }
+                          }
+                        },
                       ),
                     ],
                   ),

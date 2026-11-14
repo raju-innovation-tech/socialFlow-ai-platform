@@ -71,3 +71,4 @@ class TokenManager:
         secret = credential_vault.decrypt(cred.encrypted_token_secret) if cred.encrypted_token_secret else None
 
         return access, refresh, secret
+

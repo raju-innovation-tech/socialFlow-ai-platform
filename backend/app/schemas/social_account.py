@@ -37,3 +37,38 @@ class PlatformCapabilityResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
+class TelegramConnectRequest(BaseModel):
+    bot_token: str = Field(..., min_length=10, max_length=255)
+    chat_id: Optional[str] = None
+
+
+class WhatsAppOnboardRequest(BaseModel):
+    phone_number_id: str = Field(..., min_length=5, max_length=128)
+    waba_id: str = Field(..., min_length=5, max_length=128)
+    access_token: str = Field(..., min_length=10)
+
+
+class SelectPageRequest(BaseModel):
+    channel_id: str
+    channel_name: str
+    access_token: str
+    platform: str = Field(..., pattern="^(facebook|instagram|youtube)$")
+    account_type: str = "page"
+    avatar_url: Optional[str] = None
+
+
+class OAuthAuthorizeResponse(BaseModel):
+    platform: str
+    authorization_url: str
+    state: str
+
+
+class SocialAccountPermissionResponse(BaseModel):
+    id: str
+    scope: str
+    is_granted: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+

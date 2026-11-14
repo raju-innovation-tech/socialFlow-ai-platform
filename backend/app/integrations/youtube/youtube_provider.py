@@ -239,3 +239,4 @@ class YouTubeProvider(BasePlatformProvider):
                 return res.status_code == 200
             except Exception:
                 return False
+

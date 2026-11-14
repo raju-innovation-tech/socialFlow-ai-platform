@@ -60,3 +60,4 @@ class TokenBundle(BaseModel):
     expires_in: Optional[int] = None
     scopes: List[str] = Field(default_factory=list)
     raw_response: Dict[str, Any] = Field(default_factory=dict)
+

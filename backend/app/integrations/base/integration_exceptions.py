@@ -78,3 +78,4 @@ class CapabilityRestrictedException(IntegrationException):
             status_code=status.HTTP_403_FORBIDDEN,
             extra={"capability": capability, "restriction_reason": reason},
         )
+
